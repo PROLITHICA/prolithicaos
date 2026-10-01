@@ -10,7 +10,7 @@
     </div>
 
     <div class="nav-groups">
-      <div><div class="section-kicker">Together at Prolithica</div><a class="nav-item" routerLink="/work" routerLinkActive="active" (click)="closeNav()">My work & daily logs</a><a class="nav-item" routerLink="/chat" routerLinkActive="active" (click)="closeNav()">Company chat</a></div>
+      <div><div class="section-kicker">Together at Prolithica</div><a class="nav-item" routerLink="/work" routerLinkActive="active" (click)="closeNav()">Work board</a><a class="nav-item" routerLink="/reports" routerLinkActive="active" (click)="closeNav()">Daily reports</a><a class="nav-item" routerLink="/chat" routerLinkActive="active" (click)="closeNav()">Company chat</a></div>
       @for (group of navGroups(); track group.heading) {
         <div>
           <div class="section-kicker">{{ group.heading }}</div>
@@ -99,6 +99,7 @@
       @if (crumbs().length) {
         <app-breadcrumbs [crumbs]="crumbs()" [current]="crumbCurrent()" />
       }
+      <app-report-reminder />
       <router-outlet />
     </div>
 

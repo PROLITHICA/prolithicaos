@@ -12,3 +12,8 @@ _design/
 *.log
 undefined/
 PROLITHICA OS design roles/
+
+.venv/
+backend/private_uploads/
+
+/work/

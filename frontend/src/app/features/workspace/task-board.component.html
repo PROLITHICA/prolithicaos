@@ -1,0 +1,25 @@
+<section class="work-section">
+  <div class="section-top"><div><p class="eyebrow">DELIVERY AT A GLANCE</p><h2>Give every task a next step.</h2><p class="small">{{count()}} tasks in your scope · {{tasks().length}} loaded</p></div><div class="view-switch" aria-label="Task view"><button type="button" [class.active]="view==='board'" [attr.aria-pressed]="view==='board'" (click)="view='board'">Board</button><button type="button" [class.active]="view==='list'" [attr.aria-pressed]="view==='list'" (click)="view='list'">List</button></div></div>
+  <form class="filter-bar" (ngSubmit)="load()">
+    <label>Department<select name="department" [(ngModel)]="filters.department" (ngModelChange)="load()"><option value="">All departments</option>@for(d of departments;track d.id){<option [value]="d.id">{{d.label}}</option>}</select></label>
+    <label>Project<select name="projectFilter" [(ngModel)]="filters.project" (ngModelChange)="load()"><option value="">All projects</option>@for(p of projects;track p.id){<option [value]="p.id">{{p.name}}</option>}</select></label>
+    <label>Owner<select name="owner" [(ngModel)]="filters.assignee" (ngModelChange)="load()"><option value="">Everyone</option>@for(p of people;track p.id){<option [value]="p.id">{{p.display_name}}</option>}</select></label>
+    <label>Priority<select name="priorityFilter" [(ngModel)]="filters.priority" (ngModelChange)="load()"><option value="">All priorities</option>@for(p of priorities;track p){<option [value]="p">{{p}}</option>}</select></label>
+    <label>Due by<input type="date" name="dueBefore" [(ngModel)]="filters.due_before" (ngModelChange)="load()"></label>
+    <label>Search tasks<input type="search" name="query" [(ngModel)]="filters.q" placeholder="Find work…"></label><button class="btn btn-secondary" type="submit">Search</button>
+  </form>
+  @if(error()){<p class="workspace-error" role="alert">{{error()}} <button class="btn btn-secondary" (click)="load()">Retry</button></p>}
+  @if(notice()){<p role="status" class="small">{{notice()}}</p>}
+  @if(loading()){<p role="status" class="small">Loading tasks…</p>}
+  @if(view==='board'){
+    <div class="kanban">@for(column of columns;track column.value){<section class="kanban-column" [class.blocked-column]="column.value==='blocked'" (dragover)="$event.preventDefault()" (drop)="drop($event,column.value)" [attr.aria-label]="column.label"><header><h3><span class="status-dot" [class]="'status-dot '+column.value"></span>{{column.label}}</h3><span class="column-count">{{inColumn(column.value).length}}</span></header>
+      @for(task of inColumn(column.value);track task.id){<article class="task-card" [draggable]="task.can_complete && !busy() && !loading()" (dragstart)="drag($event,task)" (dragend)="dragged=null"><div class="task-meta"><span class="priority" [class.urgent]="task.priority==='urgent'" [class.high]="task.priority==='high'">{{task.priority}}</span><span>{{task.project}}</span></div><h4>{{task.text}}</h4><p class="task-owner">{{task.assignee}}</p><p class="task-deadline" [class.overdue]="overdue(task)">{{task.due_date ? (task.due_date | date:'MMM d') : 'No deadline'}}{{overdue(task)?' · Overdue':''}}</p>
+        <label class="sr-only" [for]="'status-'+task.id">Status for {{task.text}}</label><select [id]="'status-'+task.id" [disabled]="!task.can_complete || busy() || loading()" [ngModel]="task.status" (ngModelChange)="update(task,{status:$event})">@for(c of columns;track c.value){<option [value]="c.value">{{c.label}}</option>}</select>
+        @if(canAssign){<details class="task-edit"><summary>Priority & deadline</summary><label>Priority<select [ngModel]="task.priority" [disabled]="busy() || loading()" (ngModelChange)="update(task,{priority:$event})">@for(p of priorities;track p){<option [value]="p">{{p}}</option>}</select></label><label>Deadline<input type="date" [value]="task.due_date || ''" [disabled]="busy() || loading()" (change)="update(task,{due_date:$any($event.target).value || null})"></label></details>}
+      </article>}@empty{<div class="column-empty">{{column.value==='done'?'Completed work lands here.':'No tasks here yet.'}}</div>}
+    </section>}</div>
+  }@else{
+    <div class="table-scroll"><table class="work-table"><thead><tr><th>Task / project</th><th>Owner</th><th>Priority</th><th>Due</th><th>Status</th></tr></thead><tbody>@for(task of tasks();track task.id){<tr><td><strong>{{task.text}}</strong><small>{{task.project}}</small></td><td>{{task.assignee}}</td><td>{{task.priority}}</td><td [class.overdue]="overdue(task)">{{task.due_date ? (task.due_date | date:'mediumDate') : '—'}}</td><td><select [attr.aria-label]="'Status for '+task.text" [disabled]="!task.can_complete || busy() || loading()" [ngModel]="task.status" (ngModelChange)="update(task,{status:$event})">@for(c of columns;track c.value){<option [value]="c.value">{{c.label}}</option>}</select></td></tr>}@empty{<tr><td colspan="5">No tasks match these filters.</td></tr>}</tbody></table></div>
+  }
+  @if(hasNext()){<button class="btn btn-secondary load-more" [disabled]="loading()" (click)="more()">Load more tasks</button>}
+</section>

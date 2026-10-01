@@ -104,6 +104,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+PRIVATE_CHAT_ROOT = Path(os.environ.get("PROLITHICA_PRIVATE_CHAT_ROOT", str(BASE_DIR / "private_uploads")))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

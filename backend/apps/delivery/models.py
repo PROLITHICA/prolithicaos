@@ -309,11 +309,35 @@ class Task(RefModel):
     )
     points = models.PositiveSmallIntegerField(default=0)
     done = models.BooleanField(default=False)
+    status = models.CharField(max_length=16, choices=[("todo", "To do"), ("in_progress", "In progress"), ("blocked", "Blocked"), ("done", "Done")], default="todo", db_index=True)
+    priority = models.CharField(max_length=8, choices=[("low", "Low"), ("normal", "Normal"), ("high", "High"), ("urgent", "Urgent")], default="normal", db_index=True)
+    due_date = models.DateField(null=True, blank=True, db_index=True)
     tag_class = models.CharField(max_length=20, choices=TagClass.choices, default=TagClass.NEUTRAL)
     order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ["order"]
+
+    def save(self, *args, **kwargs):
+        # Older project screens still update `done`; keep both representations aligned.
+        fields = kwargs.get("update_fields")
+        if fields and "done" in fields and "status" not in fields:
+            self.status = "done" if self.done else "todo"
+            kwargs["update_fields"] = set(fields) | {"status"}
+        elif fields and "status" in fields:
+            self.done = self.status == "done"
+            kwargs["update_fields"] = set(fields) | {"done"}
+        elif self._state.adding:
+            if self.done:
+                self.status = "done"
+            self.done = self.status == "done"
+        else:
+            previous = type(self).objects.filter(pk=self.pk).values("done", "status").first()
+            if previous and previous["status"] == self.status and previous["done"] != self.done:
+                self.status = "done" if self.done else "todo"
+            else:
+                self.done = self.status == "done"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.text

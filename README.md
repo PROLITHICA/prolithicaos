@@ -116,6 +116,6 @@ frontend/src/app/
 ## Tests
 
 ```bash
-backend_venv/bin/python backend/manage.py test
+backend_venv/bin/python backend/manage.py test apps.workforce apps.accounts apps.delivery apps.core apps.crm apps.finance apps.knowledge apps.secretariat apps.documents --noinput
 export PATH=/opt/homebrew/bin:$PATH && cd frontend && npm run build
 ```

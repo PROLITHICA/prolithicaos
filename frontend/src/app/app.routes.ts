@@ -40,6 +40,7 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
     children: [
       {path: 'work', data:{title:'My work'}, loadComponent:()=>import('./features/workspace/workspace.component').then(m=>m.WorkspaceComponent)},
+      {path: 'reports', data:{title:'Daily reports'}, loadComponent:()=>import('./features/workspace/reports.component').then(m=>m.ReportsComponent)},
       {path: 'chat', data:{title:'Company chat'}, loadComponent:()=>import('./features/workspace/chat.component').then(m=>m.ChatComponent)},
       { path: 'dashboard', data: { title: 'Dashboard' }, loadComponent: () => import('./features/my-day/my-day.component').then(m => m.MyDayComponent) },
       // ── company ──────────────────────────────────────────────────────
