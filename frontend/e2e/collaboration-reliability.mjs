@@ -1,0 +1,56 @@
+// Browser fault injection for pagination retries and protected chat drafts.
+import { chromium } from 'playwright';
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const sessions=JSON.parse(await readFile(process.env.WORKSPACE_SESSION_FILE,'utf8'));
+const base=process.env.WORKSPACE_BASE_URL ?? 'http://127.0.0.1:4421';
+const browser=await chromium.launch({headless:true,channel:process.env.WORKSPACE_BROWSER_CHANNEL || undefined});
+const page=await browser.newPage({viewport:{width:1440,height:960}});
+try{
+ await page.goto(base+'/login');await page.evaluate(tokens=>{localStorage.setItem('pl.access',tokens.access);localStorage.setItem('pl.refresh',tokens.refresh);},sessions.ceo);
+ await page.goto(base+'/work');await page.getByRole('button',{name:'Load more tasks',exact:true}).waitFor();
+ let failed=false;
+ await page.route('**/api/workspace/tasks/**',async route=>{if(new URL(route.request().url()).searchParams.get('page')==='2' && !failed){failed=true;await route.fulfill({status:503,json:{detail:'Temporary test outage'}});}else await route.continue();});
+ await page.getByRole('button',{name:'Load more tasks',exact:true}).click();await page.getByText('Temporary test outage',{exact:false}).waitFor();
+ await page.getByRole('button',{name:'Load more tasks',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelectorAll('.task-card').length>50);
+ const ids=await page.locator('.task-card > select').evaluateAll(selects=>selects.map(s=>s.id));assert.equal(new Set(ids).size,ids.length);
+ console.log('PASS task pagination retries the failed page.');
+ const changing=page.locator('.task-card').first();await changing.locator('select').first().selectOption('done');
+ await page.getByText('Task updated.',{exact:true}).waitFor();await page.getByRole('button',{name:'Load more tasks',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelectorAll('.task-card').length>50);
+ const after=await page.locator('.task-card > select').evaluateAll(selects=>selects.map(s=>s.id));assert.equal(new Set(after).size,after.length);
+ console.log('PASS task mutations restart pagination without duplicate records.');
+ await page.unroute('**/api/workspace/tasks/**');
+ await page.getByRole('button',{name:'Search',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.task-card').length===50);
+ let held;let arrived;const loadingPage=new Promise(resolve=>arrived=resolve);
+ await page.route('**/api/workspace/tasks/**',async route=>{if(new URL(route.request().url()).searchParams.get('page')==='2'){held=route;arrived();}else await route.continue();});
+ await page.getByRole('button',{name:'Load more tasks',exact:true}).click();await loadingPage;
+ await page.waitForFunction(()=>document.querySelector('.task-card > select')?.disabled);
+ assert.equal(await page.locator('.task-card > select').first().isDisabled(),true);
+ await held.continue();await page.waitForFunction(()=>document.querySelectorAll('.task-card').length>50);
+ console.log('PASS in-flight pagination prevents task mutations from skipping pages.');
+
+ await page.unroute('**/api/workspace/tasks/**');
+ await page.goto(base+'/reports');await page.locator('textarea[name=completed]').waitFor();
+ await page.locator('textarea[name=completed]').fill('Current-day unsaved draft');
+ const date=await page.locator('input[type=date]').first().inputValue();const yesterday=new Date(date+'T12:00:00Z');yesterday.setUTCDate(yesterday.getUTCDate()-1);const previous=yesterday.toISOString().slice(0,10);
+ await page.route('**/api/workspace/reports/**',async route=>{if(new URL(route.request().url()).searchParams.get('date')===previous)await route.fulfill({status:503,json:{detail:'Date test outage'}});else await route.continue();});
+ await page.locator('input[type=date]').first().fill(previous);await page.getByText('Date test outage',{exact:true}).waitFor();assert.equal(await page.locator('textarea[name=completed]').isDisabled(),true);
+ await page.unroute('**/api/workspace/reports/**');
+ await page.getByRole('button',{name:'Refresh reports',exact:true}).click();
+ await page.waitForFunction(()=>!document.querySelector('fieldset')?.disabled);
+ assert.equal(await page.locator('textarea[name=completed]').inputValue(),'');
+ console.log("PASS failed date changes cannot save another day's report.");
+ await page.goto(base+'/chat');await page.getByRole('button',{name:'Engineering · browser fixture Department',exact:true}).click();await page.locator('textarea[name=message]').waitFor();
+ let postRoute;let gotPost;
+ const pending=new Promise(resolve=>gotPost=resolve);
+ await page.route('**/api/workspace/threads/*/messages/**',async route=>{if(route.request().method()==='POST'){postRoute=route;gotPost();}else await route.fulfill({status:503,json:{detail:'Polling test outage'}});});
+ await page.locator('textarea[name=message]').fill('Preserve my draft during polling failure.');await page.getByRole('button',{name:'Send message',exact:false}).click();await pending;
+ await page.getByText('Polling test outage',{exact:false}).waitFor({timeout:15000});
+ assert.equal(await page.locator('textarea[name=message]').isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:'Sending…',exact:false}).isDisabled(),true);
+ await postRoute.fulfill({status:503,json:{detail:'Send test outage'}});await page.getByText('Send test outage',{exact:false}).waitFor();
+ assert.equal(await page.locator('textarea[name=message]').inputValue(),'Preserve my draft during polling failure.');
+ console.log('PASS polling failure cannot unlock a pending message; failed sends retain drafts.');
+}finally{await browser.close();}

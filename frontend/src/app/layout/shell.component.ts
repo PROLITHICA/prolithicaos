@@ -1,4 +1,5 @@
 import { NotificationStateService } from '../core/notification-state.service';
+import { ReportReminderComponent } from '../features/workspace/report-reminder.component';
 import { PresenceService } from '../core/presence.service';
 import { ThemeColorPipe } from '../shared/ui/theme-color.pipe';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
@@ -28,7 +29,7 @@ const HOME_ROUTES: Record<string, string> = {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [ThemeColorPipe,
+  imports: [ThemeColorPipe, ReportReminderComponent,
     RouterOutlet, RouterLink, RouterLinkActive, FormsModule,
     BreadcrumbsComponent, SkeletonComponent, ToastHostComponent,
   ],
