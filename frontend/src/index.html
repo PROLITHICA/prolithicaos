@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8">
   <title>Prolithica OS</title>
+  <script>
+    if (/^\/PROLITHICAOS(?:\/|$)/.test(location.pathname)) {
+      location.replace('/prolithicaos' + location.pathname.slice('/PROLITHICAOS'.length) + location.search + location.hash);
+    }
+  </script>
   <base href="/">
   <script src="deployment-config.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
